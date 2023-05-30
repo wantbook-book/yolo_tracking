@@ -304,7 +304,7 @@ def main(opt):
     opt['reid_model'] = WEIGHTS / 'mobilenetv2_x1_4_dukemtmcreid.pt'
     opt['tracking_method'] = 'deepocsort'
     opt['source'] = '0'
-    # opt['source'] = '../video/qimo.mp4'
+    opt['source'] = '../video/two.mp4'
 
     opt['show'] = True
     opt['save'] = True

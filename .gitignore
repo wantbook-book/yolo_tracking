@@ -34,3 +34,7 @@ tf_models/
 build/
 dist/
 *.egg-info/
+
+video/*
+
+
