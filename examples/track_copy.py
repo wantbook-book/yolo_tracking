@@ -1,10 +1,5 @@
 # https://github.com/ultralytics/ultralytics/issues/1429#issuecomment-1519239409
-import math
-import json
-import os.path as osp
-from pytorch_openpose.src import util
-from pytorch_openpose.src.body import Body
-from pytorch_openpose.src.hand import Hand
+
 from pathlib import Path
 import torch
 import argparse
@@ -26,8 +21,7 @@ ROOT = FILE.parents[0].parents[0]  # repo root absolute path
 EXAMPLES = FILE.parents[0]  # examples absolute path
 WEIGHTS = EXAMPLES / 'weights'
 
-body_estimation = Body('pytorch_openpose/model/body_pose_model.pth')
-hand_estimation = Hand('pytorch_openpose/model/hand_pose_model.pth')
+
 def on_predict_start(predictor):
     predictor.trackers = []
     predictor.tracker_outputs = [None] * predictor.dataset.bs
@@ -66,42 +60,6 @@ def write_MOT_results(txt_path, results, frame_idx, i):
         np.savetxt(f, mot.numpy(), fmt='%d')  # save as ints instead of scientific notation
 
 
-def write_json_results(json_path, boxes, frame_idx, candidates, subsets):
-    if not osp.exists(str(json_path)+'.json'):
-        with open(str(json_path)+'.json', 'w') as f:
-            json.dump([], f, indent=4)
-    with open(str(json_path)+'.json', 'r') as f:
-        data = json.load(f)
-    people = []
-    for box, candidate, subset in zip(boxes, candidates, subsets):
-        xyxy = [i for i in box.xyxy[0]]
-        id = int(box.id[0])
-        pose_points = []
-        for i in range(18):
-            for n in range(len(subset)):
-                index = int(subset[n][i])
-                if index == -1:
-                    if n == len(subset)-1:
-                        pose_points.append([0,0])
-                    continue
-                x, y = candidate[index][0:2]
-                pose_points.append([x,y])
-        people.append(
-            {
-                'id': id,
-                'xyxy': xyxy,
-                'pose_points': pose_points
-            }
-        )
-    output = {
-        'frame_idx':frame_idx,
-        'people': people
-    }
-    data.append(output)
-    with open(str(json_path)+'.json', 'w') as f:
-        json.dump(data, f, indent=4)
-
-
 @torch.no_grad()
 def run(args):
     
@@ -126,7 +84,7 @@ def run(args):
     predictor.save_dir = increment_path(Path(predictor.args.project) / predictor.args.name, exist_ok=predictor.args.exist_ok)
     
     # Check if save_dir/ label file exists
-    if predictor.args.save or predictor.args.save_txt or predictor.args.save_json:
+    if predictor.args.save or predictor.args.save_txt:
         (predictor.save_dir / 'labels' if predictor.args.save_txt else predictor.save_dir).mkdir(parents=True, exist_ok=True)
     # Warmup model
     if not predictor.done_warmup:
@@ -198,23 +156,7 @@ def run(args):
                     boxes=torch.from_numpy(predictor.tracker_outputs[i]).to(dets.device),
                     orig_shape=im0.shape[:2],  # (height, width)
                 )
-                candidates, subsets = [], []
-                for box in predictor.results[i].boxes.cpu().numpy():
-                    # print(box.xyxy)
-                    xyxy = [math.floor(i) for i in box.xyxy[0]]
-                    mask = np.zeros_like(predictor.results[0].orig_img)
-                    mask[xyxy[1]:xyxy[3], xyxy[0]:xyxy[2],:] = 1
-                    # cv2.imshow('mask', mask)
-                    # cv2.imshow('origimg', predictor.results[i].orig_img)
-                    object = predictor.results[i].orig_img*mask
-                    # cv2.imshow('object', object)
-                    # cv2.waitKey(0)
-                    candidate, subset = body_estimation(object)
-                    candidates.append(candidate), subsets.append(subset)
-                    predictor.results[i].orig_img = util.draw_bodypose(predictor.results[i].orig_img, candidate, subset)
-                    # cv2.imshow('img', predictor.results[i].orig_img)
-                    # cv2.waitKey(0)
-                write_json_results(predictor.save_dir/'labels'/p.stem, predictor.results[i].boxes.cpu().numpy(), frame_idx, candidates, subsets)
+
 
 
                 
@@ -299,18 +241,7 @@ def parse_opt():
 
 
 def main(opt):
-    opt = vars(opt)
-    opt['yolo_model'] = WEIGHTS / 'yolov8n.pt'
-    opt['reid_model'] = WEIGHTS / 'mobilenetv2_x1_4_dukemtmcreid.pt'
-    opt['tracking_method'] = 'deepocsort'
-    opt['source'] = '0'
-    # opt['source'] = '../video/qimo.mp4'
-
-    opt['show'] = True
-    opt['save'] = True
-    opt['save_txt'] = True
-    opt['save_json'] = True
-    run(opt)
+    run(vars(opt))
 
 
 if __name__ == "__main__":
