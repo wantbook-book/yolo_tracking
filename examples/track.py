@@ -132,7 +132,7 @@ def run(args):
     if not predictor.done_warmup:
         predictor.model.warmup(imgsz=(1 if predictor.model.pt or predictor.model.triton else predictor.dataset.bs, 3, *predictor.imgsz))
         predictor.done_warmup = True
-    predictor.seen, predictor.windows, predictor.batch, predictor.profilers = 0, [], None, (ops.Profile(), ops.Profile(), ops.Profile(), ops.Profile())
+    predictor.seen, predictor.windows, predictor.batch, predictor.profilers = 0, [], None, (ops.Profile(), ops.Profile(), ops.Profile(), ops.Profile(), ops.Profile())
     predictor.add_callback('on_predict_start', on_predict_start)
     
     predictor.run_callbacks('on_predict_start')
@@ -216,7 +216,8 @@ def run(args):
                     object = predictor.results[i].orig_img*mask
                     # cv2.imshow('object', object)
                     # cv2.waitKey(0)
-                    candidate, subset = body_estimation(object)
+                    with predictor.profilers[4]:
+                        candidate, subset = body_estimation(object)
                     candidates.append(candidate), subsets.append(subset)
                     predictor.results[i].orig_img = util.draw_bodypose(predictor.results[i].orig_img, candidate, subset)
                     # cv2.imshow('img', predictor.results[i].orig_img)
@@ -261,7 +262,7 @@ def run(args):
 
         # print time (inference-only)
         if predictor.args.verbose:
-            LOGGER.info(f'{s}YOLO {predictor.profilers[1].dt * 1E3:.1f}ms, TRACKING {predictor.profilers[3].dt * 1E3:.1f}ms')
+            LOGGER.info(f'{s}YOLO {predictor.profilers[1].dt * 1E3:.1f}ms, TRACKING {predictor.profilers[3].dt * 1E3:.1f}ms, POSE {predictor.profilers[4].dt*1E3:.1f}ms')
 
     # Release assets
     if isinstance(predictor.vid_writer[-1], cv2.VideoWriter):
