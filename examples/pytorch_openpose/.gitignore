@@ -1,5 +1,4 @@
 hiddenlayer/
-*.pth
 *.caffemodel
 .idea/
 .ipynb_checkpoints/

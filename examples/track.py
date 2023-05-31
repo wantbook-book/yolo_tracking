@@ -198,8 +198,15 @@ def run(args):
                     boxes=torch.from_numpy(predictor.tracker_outputs[i]).to(dets.device),
                     orig_shape=im0.shape[:2],  # (height, width)
                 )
-                candidates, subsets = [], []
+
+
+                candidates, subsets  = [], []
+                names = predictor.results[i].names
                 for box in predictor.results[i].boxes.cpu().numpy():
+                    # if box.conf[0] < predictor.args.people_conf:
+                    #     continue
+                    # if names[box.cls[0]] != 'person':
+                    #     continue
                     # print(box.xyxy)
                     xyxy = [math.floor(i) for i in box.xyxy[0]]
                     mask = np.zeros_like(predictor.results[0].orig_img)
@@ -224,6 +231,7 @@ def run(args):
             # write inference results to a file or directory   
             if predictor.args.verbose or predictor.args.save or predictor.args.save_txt or predictor.args.show:
                 s += predictor.write_results(i, predictor.results, (p, im, im0))
+                s += f'person ids: {[str(int(box.id[0])) for box in predictor.results[i].boxes.cpu().numpy()]}, '
                 predictor.txt_path = Path(predictor.txt_path)
                 
                 # write MOT specific results
@@ -304,8 +312,11 @@ def main(opt):
     opt['reid_model'] = WEIGHTS / 'mobilenetv2_x1_4_dukemtmcreid.pt'
     opt['tracking_method'] = 'deepocsort'
     opt['source'] = '0'
-    opt['source'] = '../video/two.mp4'
-
+    opt['source'] = '../video/lwf_running_f_right_1.MP4'
+    opt['people_conf'] = 0.7
+    # opt['device'] = 0
+    opt['classes'] = 0
+    opt['conf'] = 0.7
     opt['show'] = True
     opt['save'] = True
     opt['save_txt'] = True
